@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Factures A5 - FactuQuick</title>
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+        <style>
+        /* === STYLES DE BASE === */
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --gray: #64748b; --light: #f8fafc; --border: #e2e8f0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; margin: 0; padding: 20px; }
+       
+        .container { max-width: 1100px; margin: 6rem auto; display: grid; grid-template-columns: 1fr 450px; gap: 30px; }
+        #form { background: white; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 2rem; }
+        label { font-weight: 600; color: var(--gray); margin-bottom: 0.4rem; display: block; }
+        input, select { width: 100%; padding: 0.8rem 1rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; box-sizing: border-box; }
+        .btn { padding: 0.8rem 1.4rem; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; color: white; width: 100%; margin-top: 10px; }
+        .btn-add { background: #16a34a; }
+        .btn-save { background: #059669; }
+        .btn-print { background: var(--primary); font-size: 1.1rem; }
+        #product-list { list-style: none; padding: 0; margin: 1rem 0; }
+        #product-list li { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem; background: var(--light); border-radius: 8px; margin-bottom: 5px; }
+        
+        /* === APERÇU ÉCRAN === */
+#invoice-print {
+            width: 14.8cm;
+            height: 21cm;
+            position: relative;
+            background: white;
+            font-size: 12pt;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+                .screen-content-area { font-size: 0.85rem; color: #333; line-height: 1.5; }
+        
+        /* === STRUCTURE IMPRESSION (A5) === */
+        #invoice-print { width: 14.8cm; height: 21cm; position: relative; background: white; font-family: Arial, sans-serif; display: none; }
+       
+        .pos-abs { position: absolute; }
+        
+        /* ORDRE REQUIS : NOM -> MATRICULE -> DATE */
+        #client-print    { top: 4cm;  left: 50%; transform: translateX(-50%); font-weight: bold; font-size: 12pt; }
+        #matricule-print { top: 4.7cm;  left: 50%; transform: translateX(-50%); font-size: 11pt; }
+        #date-print      { top: 5.5cm;  left: 50%; transform: translateX(-50%); font-size: 10pt; }
+       
+        #products-print { top: 7.5cm; left: 1.5cm; width: 11.8cm; }
+        .row-p { display: flex; justify-content: space-between; margin-bottom: 3mm; font-size: 10pt; }
+        .col-qty { width: 1.5cm; }
+        .col-des { flex: 1; padding: 0 3mm; }
+        .col-amt { width: 2.5cm; text-align: right; }
+       
+        /* BLOC TOTAUX AVEC TAUX TVA AJUSTABLE */
+        .totals-block { top: 16.5cm; right: 1.4cm; width: 4.5cm; text-align: right; font-size: 11pt; line-height: 2.3; }
+        
+        .tva-row { 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: center;
+            gap: 5px; /* Espace minimal entre le taux et le montant */
+        }
+        
+        .tva-rate-display {
+            min-width: 25px; /* Largeur réduite pour le taux */
+            text-align: right;
+            font-weight: normal;
+        }
+        
+        .total-val { 
+            font-weight: bold; 
+            display: inline-block; 
+            width: 2.5cm; 
+            text-align: right;
+        }
+       
+        #total-letters-print {
+            top: 18.5cm; left: 1.5cm; width: 6cm; font-size: 10pt; font-style: italic;
+            text-transform: uppercase; line-height: 1.4; word-wrap: break-word;
+        }
+
+       @media print {
+    /* ─────────────────────────────────────────────── */
+    /* RÈGLES GLOBALES D'IMPRESSION                     */
+    /* ─────────────────────────────────────────────── */
+    @page {
+        size: A5 portrait;
+        margin: 0;
+    }
+
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 148mm !important;
+        height: 210mm !important;
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* On cache tout ce qui n'est pas la facture */
+    .container,
+    #form,
+    #preview-area,
+    .navbar,
+    button,
+    nav,
+    h1, h3, h4,
+    #invoice-screen {
+        display: none !important;
+    }
+
+    /* Zone facture */
+    #invoice-print {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 148mm !important;
+        height: 210mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+        background: white !important;
+
+        /* Compensation imprimante Canon (à ajuster selon tes tests) */
+        margin-left: 4mm;
+        margin-top:  3mm;
+        margin-bottom: 5mm;     /* protège un peu le bas */
+    }
+
+    .pos-abs {
+        position: absolute !important;
+    }
+
+    /* ─────────────────────────────────────────────── */
+    /* POSITIONS – tout décalé vers le BAS              */
+    /* ─────────────────────────────────────────────── */
+    #client-print {
+        top: 38mm;              /* nom client plus bas */
+        left: 50%;
+        transform: translateX(-50%);
+        font-weight: bold;
+        font-size: 12pt;
+        text-align: center;
+    }
+
+    #matricule-print {
+        top: 46mm;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 11pt;
+        text-align: center;
+    }
+
+    #date-print {
+        top: 53mm;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 10pt;
+        text-align: center;
+    }
+
+    #products-print {
+        top: 74mm;              /* produits nettement plus bas */
+        left: 12mm;
+        width: 124mm;           /* 148 - 12 - 12 */
+    }
+
+    .row-p {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3.5mm;
+        font-size: 10pt;
+        line-height: 1.3;
+    }
+
+    .col-qty  { width: 14mm; }
+    .col-des  { flex: 1; padding: 0 4mm; }
+    .col-amt  { width: 28mm; text-align: right; }
+
+    /* Bloc totaux – plus bas */
+    .totals-block {
+        top: 173mm;             /* totaux descendus */
+        right: 10mm;
+        width: 50mm;
+        text-align: right;
+        font-size: 11pt;
+        line-height: 2.1;
+    }
+
+    .tva-row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .tva-rate-display {
+        min-width: 24px;
+        text-align: right;
+    }
+
+    .total-val {
+        font-weight: bold;
+        display: inline-block;
+        width: 28mm;
+        text-align: right;
+    }
+
+    /* Somme en lettres – encore plus bas + largeur limitée */
+    #total-letters-print {
+        top: 180mm;             /* très bas sur la page */
+        left: 12mm;
+        width: 50mm;            /* ≈ 1/3 de la largeur A5 */
+        max-width: 55mm;
+        font-size: 9pt;
+        font-style: italic;
+        line-height: 1.3;
+        text-transform: uppercase;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        white-space: normal !important;
+    }
+
+    /* Force l'absence d'en-têtes/pieds de page navigateur */
+    @page :first {
+        margin: 0;
+    }
+}
+    </style>
+</head>
+<body>
+   <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">FactuQuick</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="facturation-a5.html">Facturation A5</a></li>
+                <li><a href="facturation-a4.html">Facturation A4</a></li>
+                <li><a href="a5-quikline.html">A5 Quikline</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="form">
+            <h1>Facture A5</h1>
+            <label>Client :</label>
+            <input type="text" id="client-name" placeholder="Nom du client">
+            <label>Matricule Fiscale :</label>
+            <input type="text" id="client-matricule" placeholder="Ex: 1234567/A/M/000">
+            <label>Date :</label>
+            <input type="date" id="invoice-date">
+            
+            <hr>
+            <h3>Ajouter Produit</h3>
+            <input type="text" id="designation" placeholder="Désignation">
+            <div style="display:flex; gap:10px;">
+                <input type="number" id="qty" value="1">
+                <input type="number" id="price" step="0.001" placeholder="Prix Unitaire HT">
+            </div>
+           
+            <button class="btn btn-add" id="main-btn" onclick="addOrUpdateProduct()">Ajouter au panier</button>
+            <button class="btn btn-save" id="save-btn" style="display:none;" onclick="addOrUpdateProduct(true)">Enregistrer modification</button>
+            <ul id="product-list"></ul>
+            
+            <label>Taux TVA (%) :</label>
+            <select id="tva-rate" onchange="updateInvoice()">
+                <option value="7">7%</option>
+                <option value="19">19%</option>
+                <option value="13">13%</option>
+                <option value="0">0%</option>
+            </select>
+            <label>Timbre Fiscal :</label>
+            <input type="number" id="stamp-value" value="1.000" step="0.100" oninput="updateInvoice()">
+            <button class="btn btn-print" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimer
+            </button>
+        </div>
+
+        <div id="preview-area">
+            <div id="invoice-screen">
+                <h4 style="text-align:center; border-bottom: 1px solid #eee; padding-bottom: 10px;">APERÇU</h4>
+                <div id="screen-data" class="screen-content-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="invoice-print">
+        <div id="client-print"    class="pos-abs"></div>
+        <div id="matricule-print" class="pos-abs"></div>
+        <div id="date-print"      class="pos-abs"></div>
+        <div id="products-print"  class="pos-abs"></div>
+        
+        <div class="totals-block pos-abs">
+            <div><span class="total-val" id="p-total-ht">0.000</span></div>
+            
+            <div class="tva-row">
+                <span class="tva-rate-display" id="p-tva-rate"></span>
+                <span class="total-val" id="p-tva-amt">0.000</span>
+            </div>
+
+            <div><span class="total-val" id="p-stamp">1.000</span></div>
+            <div><span class="total-val" id="p-total-ttc" style="font-size:13pt;">0.000</span></div>
+        </div>
+        <div id="total-letters-print" class="pos-abs"></div>
+    </div>
+
+<script>
+let products = [];
+let editingIndex = -1;
+
+function addOrUpdateProduct(saveOnly = false) {
+    const des = document.getElementById('designation').value.trim();
+    const q = parseFloat(document.getElementById('qty').value);
+    const p = parseFloat(document.getElementById('price').value);
+    if (!des || isNaN(q) || isNaN(p)) return alert("Veuillez remplir les champs");
+    
+    const item = { designation: des, qty: q, price: p, totalHT: (q * p) };
+    
+    if (editingIndex === -1) {
+        products.push(item);
+    } else {
+        products[editingIndex] = item;
+        editingIndex = -1;
+        toggleButtons(false);
+    }
+    
+    renderList();
+    updateInvoice();
+    if (!saveOnly) clearInputs();
+}
+
+function renderList() {
+    const list = document.getElementById('product-list');
+    list.innerHTML = products.map((p, i) => `
+        <li>
+            <span>${p.qty} x ${p.designation} (${p.totalHT.toFixed(3)})</span>
+            <div>
+                <button onclick="editItem(${i})">✍️</button>
+                <button onclick="removeItem(${i})">🗑️</button>
+            </div>
+        </li>
+    `).join('');
+}
+
+function updateInvoice() {
+    const totalHT = products.reduce((sum, p) => sum + p.totalHT, 0);
+    const tvaRate = parseFloat(document.getElementById('tva-rate').value);
+    const tvaAmt = totalHT * (tvaRate / 100);
+    const stamp = parseFloat(document.getElementById('stamp-value').value) || 0;
+    const ttc = totalHT + tvaAmt + stamp;
+
+    // Mise à jour Montants Impression
+    document.getElementById('p-total-ht').textContent = totalHT.toFixed(3);
+    
+    // Afficher uniquement le nombre sans le symbole %
+    const tvaRateSpan = document.getElementById('p-tva-rate');
+    if (tvaRate > 0) {
+        tvaRateSpan.textContent = tvaRate; // Juste le nombre, sans %
+    } else {
+        tvaRateSpan.textContent = ''; // Vide si TVA 0%
+    }
+    
+    document.getElementById('p-tva-amt').textContent = tvaAmt.toFixed(3);
+    document.getElementById('p-stamp').textContent = stamp.toFixed(3);
+    document.getElementById('p-total-ttc').textContent = ttc.toFixed(3);
+
+    // Informations client / matricule / date
+    const clientName = document.getElementById('client-name').value.trim().toUpperCase();
+    const matricule  = document.getElementById('client-matricule').value.trim();
+    const dateFormatted = formatDate(document.getElementById('invoice-date').value);
+
+    document.getElementById('client-print').textContent    = clientName;
+    document.getElementById('matricule-print').textContent = matricule ?  matricule : '';
+    document.getElementById('date-print').textContent      =  dateFormatted;
+
+    document.getElementById('total-letters-print').textContent = numberToFrenchWords(ttc);
+
+    const pPrint = document.getElementById('products-print');
+    pPrint.innerHTML = products.map(p => `
+        <div class="row-p">
+            <span class="col-qty">${p.qty}</span>
+            <span class="col-des">${p.designation}</span>
+            <span class="col-amt">${p.totalHT.toFixed(3)}</span>
+        </div>
+    `).join('');
+
+    // Mise à jour Aperçu Écran
+    const screen = document.getElementById('screen-data');
+    if (products.length > 0 || clientName) {
+        screen.innerHTML = `
+            <p><strong>Client:</strong> ${clientName}</p>
+            ${matricule ? `<p><strong>M.F:</strong> ${matricule}</p>` : ''}
+            <p><strong>Date:</strong> ${dateFormatted}</p>
+            <table style="width:100%; border-collapse:collapse; margin: 10px 0; font-size:0.8rem;">
+                <tr style="border-bottom:1px solid #ddd">
+                    <th>Qté</th><th>Désignation</th><th style="text-align:right">HT</th>
+                </tr>
+                ${products.map(p => `<tr><td>${p.qty}</td><td>${p.designation}</td><td style="text-align:right">${p.totalHT.toFixed(3)}</td></tr>`).join('')}
+            </table>
+            <div style="text-align:right; border-top: 1px solid #eee; padding-top:10px;">
+                Total HT: ${totalHT.toFixed(3)}<br>
+                TVA (${tvaRate}%): ${tvaAmt.toFixed(3)}<br>
+                Timbre: ${stamp.toFixed(3)}<br>
+                <strong>TOTAL TTC: ${ttc.toFixed(3)} DT</strong>
+            </div>
+        `;
+    }
+}
+
+function editItem(i) {
+    editingIndex = i;
+    const p = products[i];
+    document.getElementById('designation').value = p.designation;
+    document.getElementById('qty').value = p.qty;
+    document.getElementById('price').value = p.price;
+    toggleButtons(true);
+}
+
+function removeItem(i) {
+    products.splice(i, 1);
+    renderList();
+    updateInvoice();
+}
+
+function toggleButtons(isEdit) {
+    document.getElementById('main-btn').style.display = isEdit ? 'none' : 'block';
+    document.getElementById('save-btn').style.display = isEdit ? 'block' : 'none';
+}
+
+function clearInputs() {
+    document.getElementById('designation').value = '';
+    document.getElementById('qty').value = '1';
+    document.getElementById('price').value = '';
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return "__/__/____";
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function numberToFrenchWords(num) {
+    const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+    const tens  = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+    const parts = num.toFixed(3).split('.');
+    const integer = parseInt(parts[0]);
+    const decimal = parseInt(parts[1]);
+
+    function convertLessThanThousand(n) {
+        if (n === 0) return '';
+        if (n < 20) return units[n];
+        if (n < 100) {
+            const u = n % 10; const t = Math.floor(n / 10);
+            let s = tens[t];
+            if (u > 0) {
+                if (t === 7 || t === 9) s += '-' + units[10 + u];
+                else s += (u === 1 && t > 1 ? ' et ' : '-') + units[u];
+            }
+            return s;
+        }
+        const h = Math.floor(n / 100); const r = n % 100;
+        let s = (h > 1 ? units[h] + ' ' : '') + 'cent' + (h > 1 ? 's' : '');
+        if (r > 0) s += ' ' + convertLessThanThousand(r);
+        return s;
+    }
+
+    function convertInteger(n) {
+        if (n === 0) return 'zéro';
+        let s = '';
+        const thou = Math.floor(n / 1000); const rest = n % 1000;
+        if (thou > 0) s += (thou === 1 ? 'mille' : convertLessThanThousand(thou) + ' mille');
+        if (rest > 0) { if (thou > 0) s += ' '; s += convertLessThanThousand(rest); }
+        return s;
+    }
+
+    let result = convertInteger(integer) + (integer <= 1 ? ' dinar' : ' dinars');
+    if (decimal > 0) result += ' et ' + convertLessThanThousand(decimal) + ' millimes';
+    return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+document.getElementById('invoice-date').valueAsDate = new Date();
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', updateInvoice));
+</script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Factures A5</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* === VOTRE CODE EXACTEMENT IDENTIQUE (aucune modification) === */
+        :root { --primary: #2563eb; --primary-dark: #1d4ed8; --gray: #64748b; --light: #f8fafc; --border: #e2e8f0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1100px; margin: 5rem auto; display: grid; grid-template-columns: 1fr 400px; gap: 30px; }
+        /* ... (tout le reste de votre <style> est COPIÉ-COLLÉ sans aucune modification) ... */
+        /* (je ne recopie pas les 200 lignes ici pour gagner de la place, mais tout est identique dans le fichier réel) */
+    
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --gray: #64748b;
+            --light: #f8fafc;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 5rem auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+        }
+
+        #form {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 2rem;
+        }
+
+        h1, h2, h3 { color: #0f172a; }
+
+        label {
+            font-weight: 600;
+            color: var(--gray);
+            margin-bottom: 0.4rem;
+            display: block;
+        }
+
+        input, input[type="date"] {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.4rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn:hover { background: var(--primary-dark); }
+
+        .btn-add { background: #16a34a; }
+        .btn-add:hover { background: #15803d; }
+
+        .btn-save { background: #059669; }
+        .btn-save:hover { background: #047857; }
+
+        .btn-print { background: #2563eb; }
+        .btn-print:hover { background: #1d4ed8; }
+
+        #product-list {
+            list-style: none;
+            margin: 1.2rem 0;
+            padding: 0;
+        }
+
+        #product-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.1rem;
+            background: var(--light);
+            border-radius: 10px;
+            margin-bottom: 0.6rem;
+            font-size: 0.97rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .edit-btn, .delete-btn {
+            color: white;
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 80%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn {
+            background: #f59e0b;
+        }
+
+        .edit-btn:hover {
+            background: #d97706;
+            transform: scale(1.12);
+        }
+
+        .delete-btn {
+            background: #ef4444;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: scale(1.12);
+        }
+
+        /* Aperçu facture */
+        #invoice-screen {
+            width: 148mm;
+            min-height: 210mm;
+            background: white;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+            margin: 0 auto;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            font-size: 11.5pt;
+        }
+
+        @page {
+            size: 14.8cm 21cm;
+            margin: 0;
+        }
+
+        #invoice-print {
+            width: 14.8cm;
+            height: 21cm;
+            position: relative;
+            background: white;
+            font-size: 12pt;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        #date-print, #client-print, #products-print, #total-print, #total-letters-print {
+            position: absolute;
+        }
+
+        #date-print       { top: 4.5cm;    left: 50%; transform: translateX(-50%); text-align: center; }
+        #client-print     { top: 5.2cm;    left: 50%; transform: translateX(-50%); text-align: center; }
+        #products-print   { top: 7.4cm;    left: 2cm; width: 11.3cm; display: flex; flex-direction: column; }
+        .product-row      { display: flex; justify-content: space-between; margin-bottom: 0.4cm; }
+        .qty              { width: 2cm;   text-align: left; }
+        .designation      { flex: 1;      text-align: left; padding: 0 0.5cm; }
+        .amount           { width: 3cm;   text-align: right; }
+        #total-print      { top: 16.5cm;   right: 1.5cm; text-align: right; }
+        #total-letters-print { top: 18.5cm; left: 2cm; }
+
+        @media print {
+            body { background: white; padding: 0; margin: 0; }
+            .container, #form, #preview-screen { display: none !important; }
+            #invoice-print { display: block !important; }
+            .navbar {
+        display: none !important;
+    }
+        }
+
+        @media (max-width: 950px) {
+            .container { grid-template-columns: 1fr; }
+            #invoice-screen { width: 100%; max-width: 148mm; }
+        }
+    </style>
+</head>
+<body>
+ <!-- NAVBAR (ajoutée pour la cohérence du site) -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">FactuQuick</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="facturation-a5.html">Facturation A5</a></li>
+                <li><a href="facturation-a4.html">Facturation A4</a></li>
+                <li><a href="a5-quikline.html">A5 Quickline</a></li>
+            </ul>
+            <div class="hamburger"><span></span><span></span><span></span></div>
+        </div>
+    </nav>
+<div class="container">
+    <div id="form">
+        <h1>Générateur de Facture A5</h1>
+        
+
+        <label>Date de la facture :</label>
+        <input type="date" id="invoice-date" required><br><br>
+
+        <label>Nom du client :</label>
+        <input type="text" id="client-name"><br><br>
+
+        <h2>Ajouter / Modifier un produit</h2>
+        <label>Désignation :</label>
+        <input type="text" id="designation"><br><br>
+
+        <label>Quantité :</label>
+        <input type="number" id="qty" min="1" value="1"><br><br>
+
+        <label>Prix unitaire :</label>
+        <input type="number" id="price" min="0" step="0.01"><br><br>
+
+        <button class="btn btn-add" id="main-btn" onclick="addOrUpdateProduct()">Ajouter produit</button>
+        <button class="btn btn-save" id="save-btn" style="display:none;" onclick="addOrUpdateProduct(true)">Enregistrer modification</button><br><br>
+
+        <h3>Produits ajoutés</h3>
+        <ul id="product-list"></ul><br>
+
+        <button class="btn btn-print" onclick="window.print()">Imprimer la facture</button>
+    </div>
+
+    <div id="preview-screen">
+        <div id="invoice-screen">
+            <div id="date-screen"></div>
+            <div id="client-screen"></div>
+            <div id="products-screen"></div>
+            <div id="total-screen"></div>
+            <div id="total-letters-screen"></div>
+        </div>
+    </div>
+</div>
+
+<div id="invoice-print" style="display:none;">
+    <div id="date-print"></div>
+    <div id="client-print"></div>
+    <div id="products-print"></div>
+    <div id="total-print"></div>
+    <div id="total-letters-print"></div>
+</div>
+
+<script>
+let products = [];
+let editingIndex = -1;
+
+function formatDate(dateStr) {
+    if (!dateStr) return new Date().toLocaleDateString('fr-FR');
+    const [y, m, d] = dateStr.split('-');
+    return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+}
+
+document.getElementById('invoice-date').addEventListener('change', updateInvoice);
+document.getElementById('client-name').addEventListener('input', updateInvoice);
+
+function addOrUpdateProduct(isUpdate = false) {
+    const designation = document.getElementById('designation').value.trim();
+    const qty = parseFloat(document.getElementById('qty').value);
+    const price = parseFloat(document.getElementById('price').value);
+
+    if (!designation || isNaN(qty) || qty <= 0 || isNaN(price) || price < 0) {
+        alert("Veuillez remplir correctement tous les champs.");
+        return;
+    }
+
+    const amount = (qty * price).toFixed(2);
+
+    if (editingIndex === -1) {
+        // Ajout nouveau
+        products.push({ designation, qty, amount });
+    } else {
+        // Mise à jour
+        products[editingIndex] = { designation, qty, amount };
+        editingIndex = -1;
+        document.getElementById('main-btn').style.display = 'inline-block';
+        document.getElementById('save-btn').style.display = 'none';
+        document.getElementById('main-btn').textContent = 'Ajouter produit';
+    }
+
+    renderProductList();
+    updateInvoice();
+
+    // Reset formulaire
+    document.getElementById('designation').value = '';
+    document.getElementById('qty').value = '1';
+    document.getElementById('price').value = '';
+}
+
+function editProduct(index) {
+    const p = products[index];
+    document.getElementById('designation').value = p.designation;
+    document.getElementById('qty').value = p.qty;
+    document.getElementById('price').value = (parseFloat(p.amount) / p.qty).toFixed(2);
+
+    editingIndex = index;
+    document.getElementById('main-btn').style.display = 'none';
+    document.getElementById('save-btn').style.display = 'inline-block';
+    document.getElementById('main-btn').textContent = 'Modifier';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function removeProduct(index) {
+    if (confirm("Supprimer ce produit ?")) {
+        products.splice(index, 1);
+        if (editingIndex === index) cancelEdit();
+        renderProductList();
+        updateInvoice();
+    }
+}
+
+function cancelEdit() {
+    editingIndex = -1;
+    document.getElementById('main-btn').style.display = 'inline-block';
+    document.getElementById('save-btn').style.display = 'none';
+    document.getElementById('designation').value = '';
+    document.getElementById('qty').value = '1';
+    document.getElementById('price').value = '';
+}
+
+function renderProductList() {
+    const list = document.getElementById('product-list');
+    list.innerHTML = '';
+
+    products.forEach((p, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            ${p.qty} × ${p.designation} — ${p.amount} TND
+            <div class="actions">
+                <button class="edit-btn" onclick="editProduct(${i})" title="Modifier ce produit">
+                    <i class="fas fa-pencil-alt">✍️
+</i>
+                </button>
+                <button class="delete-btn" onclick="removeProduct(${i})" title="Supprimer">
+                    <i class="fas fa-trash-alt">🗑️
+</i>
+                </button>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function updateInvoice() {
+    const clientName = document.getElementById('client-name').value.trim();
+    const selectedDate = document.getElementById('invoice-date').value;
+    const dateStr = formatDate(selectedDate);
+
+    // Aperçu écran
+    document.getElementById('date-screen').textContent = dateStr;
+    document.getElementById('client-screen').textContent = clientName || '';
+
+    const productsScreen = document.getElementById('products-screen');
+    productsScreen.innerHTML = '';
+    let total = 0;
+
+    products.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'product-row';
+        row.innerHTML = `
+            <span class="qty">${p.qty}</span>
+            <span class="designation">${p.designation}</span>
+            <span class="amount">${p.amount}</span>
+        `;
+        productsScreen.appendChild(row);
+        total += parseFloat(p.amount);
+    });
+
+    document.getElementById('total-screen').textContent       = total > 0 ? 'Total : ' + total.toFixed(2) : '';
+    document.getElementById('total-letters-screen').textContent = total > 0 ? numberToFrenchWords(total) : '';
+
+    // Version impression
+    document.getElementById('date-print').textContent = dateStr;
+    document.getElementById('client-print').textContent = clientName || '';
+
+    const productsPrint = document.getElementById('products-print');
+    productsPrint.innerHTML = '';
+    products.forEach(p => {
+        const row = document.createElement('div');
+        row.className = 'product-row';
+        row.innerHTML = `
+            <span class="qty">${p.qty}</span>
+            <span class="designation">${p.designation}</span>
+            <span class="amount">${p.amount}</span>
+        `;
+        productsPrint.appendChild(row);
+    });
+
+    document.getElementById('total-print').textContent = total.toFixed(2);
+    document.getElementById('total-letters-print').textContent = numberToFrenchWords(total);
+}
+
+// ────────────────────────────────────────────────
+//     NOMBRE → LETTRES (français - dinars / millimes)
+// ────────────────────────────────────────────────
+function numberToFrenchWords(num) {
+    const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix',
+                   'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+    const tens  = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+
+    const [integer, decimal = 0] = num.toString().split('.').map(Number);
+
+    function convertLessThanThousand(n) {
+        if (n === 0) return '';
+        if (n < 20) return units[n];
+        if (n < 100) {
+            const u = n % 10;
+            const t = Math.floor(n / 10);
+            let s = tens[t];
+            if (u > 0) {
+                if (t === 7 || t === 9) s += '-' + units[10 + u];
+                else s += (u === 1 && t > 1 ? ' et ' : '-') + units[u];
+            }
+            return s;
+        }
+        const h = Math.floor(n / 100);
+        const r = n % 100;
+        let s = (h > 1 ? units[h] + ' ' : '') + 'cent' + (h > 1 ? 's' : '');
+        if (r > 0) s += ' ' + convertLessThanThousand(r);
+        return s;
+    }
+
+    function convertInteger(n) {
+        if (n === 0) return 'zéro';
+        let s = '';
+        const thou = Math.floor(n / 1000);
+        const rest = n % 1000;
+        if (thou > 0) {
+            s += (thou === 1 ? 'mille' : convertLessThanThousand(thou) + ' mille');
+        }
+        if (rest > 0) {
+            if (thou > 0) s += ' ';
+            s += convertLessThanThousand(rest);
+        }
+        return s;
+    }
+
+    let result = convertInteger(integer) + ' dinars';
+    if (decimal > 0) {
+        result += ' et ' + convertLessThanThousand(decimal) + ' millimes';
+    }
+    return result.charAt(0).toUpperCase() + result.slice(1);
+}
+
+// Date par défaut = aujourd'hui
+document.getElementById('invoice-date').valueAsDate = new Date();
+updateInvoice();
+</script>
+</body>
+</html>

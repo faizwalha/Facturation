@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FactuQuick - Générateur A4</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* TES STYLES EXISTANTS */
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f7f6; margin: 0; padding: 0; }
+        .container { max-width: 1100px; margin: 30px auto; display: grid; grid-template-columns: 1fr 400px; gap: 25px; padding: 50px 20px; }
+        #form-container { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        label { font-weight: 600; display: block; margin-top: 15px; margin-bottom: 5px; color: #34495e; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .btn { padding: 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-add { background: #27ae60; color: white; width: 100%; }
+        .btn-update { background: #f39c12; color: white; width: 100%; display: none; }
+        .btn-print { background: #2563eb; color: white; width: 100%; font-size: 1.1rem; margin-top: 20px; }
+        
+        #product-list { margin-top: 20px; padding: 0; list-style: none; }
+        #product-list li { 
+            background: #f9f9f9; padding: 10px; border-bottom: 1px solid #eee; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .actions { display: flex; gap: 8px; }
+        .action-btn { border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; color: white; }
+        .edit-btn { background: #3498db; }
+        .delete-btn { background: #e74c3c; }
+
+        /* ZONE IMPRESSION A4 */
+        #invoice-print { 
+            width: 210mm; min-height: 297mm; background: white; 
+            padding: 20mm; margin: 20px auto; box-sizing: border-box; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.2); color: black;
+        }
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
+        .header-side { width: 35%; font-size: 10.5pt; line-height: 1.4; }
+        .header-center { width: 30%; text-align: center; }
+        .header-center h1 { margin: 0; font-size: 24pt; text-decoration: underline; font-weight: 900; }
+        .header-center .inv-num { font-size: 16pt; font-weight: bold; color: #d32f2f; margin-top: 10px; }
+        .info-section { text-align: center; margin-bottom: 30px; }
+        .date-line { font-size: 12pt; margin-bottom: 15px; font-weight: 500; }
+        .client-line { font-size: 15pt; font-weight: bold; margin-top: 5px; }
+        .table-zone { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1.5px solid black; padding: 10px; text-align: center; }
+        th { background: #f0f0f0; }
+        .td-left { text-align: left; padding-left: 15px; }
+        .td-right { text-align: right; padding-right: 15px; }
+        .total-row { text-align: right; font-size: 14pt; font-weight: bold; margin-top: 15px; padding-right: 10px; }
+        .footer-note { margin-top: 40px; border-top: 1px solid #000; padding-top: 15px; font-size: 12pt; }
+        .signature { margin-top: 60px; text-align: right; font-weight: bold; padding-right: 40px; }
+
+        @media print {
+            body { background: white; }
+            .navbar, #form-container, .btn-print, .container { display: none !important; }
+            #invoice-print { display: block !important; margin: 0; border: none; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">FactuQuick</div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="facturation-a5.html">Facturation A5</a></li>
+                <li><a href="facturation-a4.html">Facturation A4</a></li>
+                <li><a href="a5-quikline.html">A5 Quikline</a></li>
+            </ul>
+        </div>
+    </nav>
+
+<div class="container">
+    <div id="form-container">
+        <h2>Paramètres Facture</h2>
+        
+        <label>Société :</label>
+        <select id="societe-select">
+            <option value="bouzid">Bouzid Faiza</option>
+            <option value="hamadi">Hamadi Walha</option>
+        </select>
+
+        <label>Numéro Facture :</label>
+        <input type="text" id="in-num" placeholder="ex: 045/2026">
+        <label>Date :</label>
+        <input type="date" id="in-date">
+        <label>Client :</label>
+        <input type="text" id="in-client" placeholder="Nom ou Raison Sociale">
+
+        <hr>
+        <h3>Articles</h3>
+        <input type="text" id="in-des" placeholder="Désignation">
+        <div style="display:flex; gap:10px; margin-top:10px;">
+            <input type="number" id="in-qty" value="1" step="any">
+            <input type="number" id="in-price" step="0.001" placeholder="P.U (TND)">
+        </div>
+        
+        <button id="btn-add" class="btn btn-add" onclick="addItem()">Ajouter à la liste</button>
+        <button id="btn-update" class="btn btn-update" onclick="saveEdit()">Enregistrer les modifications</button>
+        
+        <ul id="product-list"></ul>
+        <button class="btn btn-print" onclick="window.print()">Imprimer Facture A4</button>
+    </div>
+</div>
+
+<div id="invoice-print" style="display:none;">
+    <div class="header-row">
+        <div class="header-side" id="print-soc-fr"></div>
+        <div class="header-center">
+            <h1>FACTURE</h1>
+            <div class="inv-num">N° <span id="p-num"></span></div>
+        </div>
+        <div class="header-side" style="text-align:right; direction:rtl;" id="print-soc-ar"></div>
+    </div>
+
+    <div class="info-section">
+        <div class="date-line">Sfax, le <span id="p-date"></span></div>
+        <div class="client-line">Mr / Client : <span id="p-client"></span></div>
+    </div>
+
+    <div class="table-zone">
+        <table>
+            <thead>
+                <tr>
+                    <th width="10%">Qté</th>
+                    <th width="65%">DÉSIGNATION / DESIGNATION</th>
+                    <th width="25%">MONTANT (TND)</th>
+                </tr>
+            </thead>
+            <tbody id="p-tbody"></tbody>
+        </table>
+    </div>
+
+    <div class="total-row">TOTAL : <span id="p-total">0.000</span> TND</div>
+
+    <div class="footer-note">
+        Arrêtée la présente facture à la somme de :<br>
+        <strong id="p-lettres" style="text-transform: uppercase;"></strong>
+    </div>
+
+    <div class="signature">Cachet et Signature</div>
+</div>
+
+<script>
+const dataSocietes = {
+    
+    "bouzid": {
+        fr: "<strong>Bouzid Faiza</strong><br>Transport Marchandises<br>Rte EL AIN KM 8 - Sfax<br>Tél : 97 269 234<br>M.F : 914.316 A",
+ar: "<strong>بوزيد فايزة</strong><br>نقل البضائع<br>طريق العين كلم 8 - صفاقس<br>الهاتف : 234 269 97"    },
+    "hamadi": {
+        fr: "<strong>Hamadi Walha </strong><br>service et Transport<br>Rte EL AIN KM 8 - Sfax<br>Tél : 97 269 234<br>M.F : 1656718 J",
+        ar: "<strong>حمادي ولها</strong><br>نقل البضائع<br>طريق العين كلم 8- صفاقس<br>الهاتف : 234 269 94"
+    }
+};
+
+let items = [];
+let editIndex = null;
+
+function addItem() {
+    const des = document.getElementById('in-des').value;
+    const qty = parseFloat(document.getElementById('in-qty').value);
+    const prc = parseFloat(document.getElementById('in-price').value) || 0;
+
+    if(des && qty > 0) {
+        items.push({ des, qty, prc, total: (qty * prc) });
+        clearFields();
+        render();
+    }
+}
+
+function deleteItem(index) {
+    items.splice(index, 1);
+    render();
+}
+
+function startEdit(index) {
+    editIndex = index;
+    const item = items[index];
+    
+    document.getElementById('in-des').value = item.des;
+    document.getElementById('in-qty').value = item.qty;
+    document.getElementById('in-price').value = item.prc;
+    
+    document.getElementById('btn-add').style.display = 'none';
+    document.getElementById('btn-update').style.display = 'block';
+}
+
+function saveEdit() {
+    if(editIndex !== null) {
+        const des = document.getElementById('in-des').value;
+        const qty = parseFloat(document.getElementById('in-qty').value);
+        const prc = parseFloat(document.getElementById('in-price').value) || 0;
+
+        if(des && qty > 0) {
+            items[editIndex] = { des, qty, prc, total: (qty * prc) };
+            editIndex = null;
+            clearFields();
+            document.getElementById('btn-add').style.display = 'block';
+            document.getElementById('btn-update').style.display = 'none';
+            render();
+        }
+    }
+}
+
+function clearFields() {
+    document.getElementById('in-des').value = '';
+    document.getElementById('in-qty').value = '1';
+    document.getElementById('in-price').value = '';
+}
+
+function render() {
+    const s = dataSocietes[document.getElementById('societe-select').value];
+    document.getElementById('print-soc-fr').innerHTML = s.fr;
+    document.getElementById('print-soc-ar').innerHTML = s.ar;
+    
+    document.getElementById('p-num').textContent = document.getElementById('in-num').value || ".......";
+    document.getElementById('p-client').textContent = document.getElementById('in-client').value || ".......................";
+    
+    const d = document.getElementById('in-date').value;
+    document.getElementById('p-date').textContent = d ? d.split('-').reverse().join('/') : "../../....";
+
+    const tbody = document.getElementById('p-tbody');
+    const list = document.getElementById('product-list');
+    tbody.innerHTML = ''; 
+    list.innerHTML = '';
+    let total = 0;
+
+    items.forEach((item, index) => {
+        total += item.total;
+        // Remplissage du tableau d'impression
+        tbody.innerHTML += `<tr><td>${item.qty}</td><td class="td-left">${item.des}</td><td class="td-right">${item.total.toFixed(3)}</td></tr>`;
+        
+        // Remplissage de la liste interactive
+        list.innerHTML += `
+            <li>
+                <div><strong>${item.qty}</strong> x ${item.des} (${item.total.toFixed(3)} TND)</div>
+                <div class="actions">
+                    <button class="action-btn edit-btn" onclick="startEdit(${index})"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn delete-btn" onclick="deleteItem(${index})"><i class="fas fa-trash"></i></button>
+                </div>
+            </li>`;
+    });
+
+    document.getElementById('p-total').textContent = total.toFixed(3);
+    document.getElementById('p-lettres').textContent = numberToFrench(total);
+}
+
+function numberToFrench(total) {
+    const main = Math.floor(total);
+    const millimes = Math.round((total - main) * 1000);
+    
+    function convert(n) {
+        const units = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize', 'dix-sept', 'dix-huit', 'dix-neuf'];
+        const tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante', 'soixante', 'soixante-dix', 'quatre-vingt', 'quatre-vingt-dix'];
+        if (n < 20) return units[n];
+        if (n < 100) return tens[Math.floor(n/10)] + (n%10 !== 0 ? '-' + units[n%10] : '');
+        if (n < 1000) return (Math.floor(n/100) > 1 ? units[Math.floor(n/100)] + ' ' : '') + 'cent' + (n%100 !== 0 ? ' ' + convert(n%100) : '');
+        return n;
+    }
+
+    let result = convert(main) + " dinars";
+    if (millimes > 0) {
+        result += " et " + millimes.toString().padStart(3, '0') + " millimes";
+    }
+    return result;
+}
+
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', render));
+document.getElementById('in-date').valueAsDate = new Date();
+render();
+</script>
+
+</body>
+</html>
